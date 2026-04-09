@@ -27,7 +27,17 @@ export interface SessionSummary {
   firstActivity: string | null;
   lastActivity: string | null;
   sizeBytes: number;
+  /**
+   * True if this session's JSONL file has been written to within the last
+   * LIVE_THRESHOLD_MS milliseconds. This is a simple mtime-based heuristic —
+   * it doesn't require poking at OS process tables, and it catches "claude
+   * is actively doing something" regardless of which terminal spawned it.
+   */
+  isLive: boolean;
 }
+
+/** A session is considered "live" if its JSONL was modified this recently. */
+export const LIVE_THRESHOLD_MS = 60_000;
 
 export interface TranscriptEvent {
   index: number;

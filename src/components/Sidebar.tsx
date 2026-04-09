@@ -1,11 +1,30 @@
-import { NavLink } from "react-router-dom";
-import { Folder, Terminal, Loader2 } from "lucide-react";
+import { NavLink, useNavigate } from "react-router-dom";
+import {
+  Folder,
+  Terminal,
+  Loader2,
+  TerminalSquare,
+  Plus,
+  Circle,
+} from "lucide-react";
 import { useProjects } from "@/hooks/useApi";
+import { useTerminals, useCreateTerminal } from "@/hooks/useTerminals";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Button } from "@/components/ui/button";
 import { cn, formatRelativeTime } from "@/lib/utils";
 
 export function Sidebar() {
   const { data: projects, isLoading, error } = useProjects();
+  const { data: terminals } = useTerminals();
+  const createTerminal = useCreateTerminal();
+  const navigate = useNavigate();
+
+  const activeTerminals = terminals?.filter((t) => !t.exited) ?? [];
+
+  async function handleNewTerminal(): Promise<void> {
+    const id = await createTerminal.mutateAsync({});
+    navigate(`/terminal/${id}`);
+  }
 
   return (
     <aside className="w-72 shrink-0 border-r border-border bg-card/40 flex flex-col">
@@ -22,7 +41,58 @@ export function Sidebar() {
         </div>
       </NavLink>
 
-      <div className="px-4 py-3 text-xs uppercase tracking-wider text-muted-foreground">
+      <div className="flex items-center justify-between px-4 pt-3 pb-1">
+        <div className="text-xs uppercase tracking-wider text-muted-foreground">
+          Terminals
+        </div>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="size-6"
+          onClick={handleNewTerminal}
+          disabled={createTerminal.isPending}
+          title="New terminal"
+        >
+          {createTerminal.isPending ? (
+            <Loader2 className="size-3 animate-spin" />
+          ) : (
+            <Plus className="size-3" />
+          )}
+        </Button>
+      </div>
+
+      <nav className="px-2 space-y-0.5 pb-2">
+        {activeTerminals.length === 0 && (
+          <div className="px-3 py-1.5 text-xs text-muted-foreground">
+            No open terminals.
+          </div>
+        )}
+        {activeTerminals.map((t) => {
+          const label = `${t.command} ${t.args.join(" ")}`.trim();
+          return (
+            <NavLink
+              key={t.id}
+              to={`/terminal/${t.id}`}
+              className={({ isActive }) =>
+                cn(
+                  "group flex items-center gap-2 rounded-md px-3 py-1.5 text-sm transition-colors",
+                  isActive
+                    ? "bg-accent text-accent-foreground"
+                    : "hover:bg-accent/50 text-foreground/90"
+                )
+              }
+            >
+              <Circle className="size-2 fill-emerald-400 text-emerald-400" />
+              <TerminalSquare className="size-3 shrink-0 text-muted-foreground" />
+              <div className="min-w-0 flex-1 truncate font-mono text-xs">
+                {label}
+              </div>
+            </NavLink>
+          );
+        })}
+      </nav>
+
+      <div className="px-4 pt-2 pb-1 text-xs uppercase tracking-wider text-muted-foreground border-t border-border">
         Projects
       </div>
 

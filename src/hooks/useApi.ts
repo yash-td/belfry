@@ -33,7 +33,9 @@ export function useSessions(slug: string | null) {
       fetchJson<{ sessions: SessionSummary[] }>(
         `/api/projects/${encodeURIComponent(slug!)}/sessions`
       ).then((r) => r.sessions),
-    staleTime: 5_000,
+    staleTime: 2_000,
+    // Poll so the live badge updates in near-real-time while the page is open.
+    refetchInterval: 5_000,
   });
 }
 

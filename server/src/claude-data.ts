@@ -17,6 +17,7 @@ import os from "node:os";
 import readline from "node:readline";
 import {
   EMPTY_USAGE,
+  LIVE_THRESHOLD_MS,
   type ProjectSummary,
   type SessionSummary,
   type TokenUsage,
@@ -269,6 +270,8 @@ async function summarizeSessionFile(
   tokens.total =
     tokens.input + tokens.output + tokens.cacheCreate + tokens.cacheRead;
 
+  const isLive = Date.now() - stat.mtimeMs < LIVE_THRESHOLD_MS;
+
   return {
     id,
     projectSlug: slug,
@@ -278,6 +281,7 @@ async function summarizeSessionFile(
     firstActivity: firstTs ?? new Date(stat.birthtimeMs).toISOString(),
     lastActivity: lastTs ?? new Date(stat.mtimeMs).toISOString(),
     sizeBytes: stat.size,
+    isLive,
   };
 }
 

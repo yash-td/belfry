@@ -1,24 +1,32 @@
 // Claude Station backend — tiny Express API that exposes Claude Code's
-// on-disk session data to the local frontend.
+// on-disk session data to the local frontend and hosts embedded PTYs.
 //
 // SECURITY: this server binds to 127.0.0.1 only. Do NOT change the host.
-// It has filesystem read access to ~/.claude and in later milestones will
-// also spawn processes (kill, resume). Exposing it to the network would
-// let anyone on that network read your transcripts and run commands as you.
+// It has filesystem read access to ~/.claude, spawns shell processes via
+// node-pty, and will be able to send signals to existing PIDs in later
+// milestones. Exposing it to the network would let anyone on that network
+// read your transcripts and run commands as you.
 
 import express, { type Request, type Response, type NextFunction } from "express";
 import cors from "cors";
+import http from "node:http";
 import {
   listProjects,
   listSessions,
   readTranscript,
 } from "./claude-data.js";
+import { ptyManager, type CreateTerminalOptions } from "./pty-manager.js";
+import { attachWebSocketServer } from "./ws.js";
 
 const HOST = "127.0.0.1";
 const PORT = Number(process.env.CLAUDE_STATION_PORT ?? 5174);
 
 const app = express();
-app.use(cors({ origin: "http://127.0.0.1:5173" }));
+app.use(
+  cors({
+    origin: ["http://127.0.0.1:5173", "http://localhost:5173"],
+  })
+);
 app.use(express.json({ limit: "1mb" }));
 
 // Structured async wrapper so thrown errors hit the error handler below.
@@ -31,7 +39,7 @@ const asyncHandler =
 app.get(
   "/api/health",
   asyncHandler(async (_req, res) => {
-    res.json({ ok: true, service: "claude-station", version: "0.1.0" });
+    res.json({ ok: true, service: "claude-station", version: "0.2.0" });
   })
 );
 
@@ -69,6 +77,50 @@ app.get(
   })
 );
 
+// ------------ terminals ------------
+
+app.get(
+  "/api/terminals",
+  asyncHandler(async (_req, res) => {
+    res.json({ terminals: ptyManager.list() });
+  })
+);
+
+app.post(
+  "/api/terminals",
+  asyncHandler(async (req, res) => {
+    const body = (req.body ?? {}) as Record<string, unknown>;
+    const opts: CreateTerminalOptions = {};
+    if (typeof body.cwd === "string") opts.cwd = body.cwd;
+    if (typeof body.command === "string") opts.command = body.command;
+    if (Array.isArray(body.args)) {
+      opts.args = body.args.filter((a): a is string => typeof a === "string");
+    }
+    if (typeof body.cols === "number") opts.cols = body.cols;
+    if (typeof body.rows === "number") opts.rows = body.rows;
+
+    const created = ptyManager.create(opts);
+    res.json(created);
+  })
+);
+
+app.delete(
+  "/api/terminals/:id",
+  asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    if (!/^[a-f0-9]{8,}$/.test(id)) {
+      res.status(400).json({ error: "Invalid terminal id" });
+      return;
+    }
+    const killed = ptyManager.kill(id);
+    if (!killed) {
+      res.status(404).json({ error: "Terminal not found" });
+      return;
+    }
+    res.json({ ok: true });
+  })
+);
+
 // Fallback 404 for unknown API routes (prevents serving HTML by mistake).
 app.use("/api", (_req, res) => {
   res.status(404).json({ error: "Not found" });
@@ -76,7 +128,6 @@ app.use("/api", (_req, res) => {
 
 // Error handler — logs full detail on the server but returns a generic
 // message to the client so we don't leak paths.
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 app.use((err: unknown, _req: Request, res: Response, _next: NextFunction) => {
   console.error("[claude-station] API error:", err);
   const message =
@@ -84,9 +135,12 @@ app.use((err: unknown, _req: Request, res: Response, _next: NextFunction) => {
   res.status(500).json({ error: message });
 });
 
-app.listen(PORT, HOST, () => {
+const httpServer = http.createServer(app);
+attachWebSocketServer(httpServer);
+
+httpServer.listen(PORT, HOST, () => {
   console.log(
-    `[claude-station] API listening on http://${HOST}:${PORT} (localhost only)`
+    `[claude-station] API + WS listening on http://${HOST}:${PORT} (localhost only)`
   );
 });
 

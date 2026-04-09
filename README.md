@@ -2,7 +2,7 @@
 
 A local dashboard for managing every [Claude Code](https://docs.anthropic.com/en/docs/claude-code) session on your machine. Browse projects, search transcripts, see token usage, and (coming soon) view live output, kill stuck sessions, and resume them from one place.
 
-> **v0.1 status:** projects sidebar, sessions browser, and transcript viewer are live. Live tailing, process management, resume-in-terminal, and global search are on the roadmap below.
+> **v0.2 status:** projects sidebar, sessions browser, transcript viewer, live session filter, and an embedded `xterm.js` terminal with "resume in terminal" are live. Live tailing, process management, and global search are on the roadmap below.
 
 ## Why
 
@@ -32,20 +32,21 @@ The frontend runs on `127.0.0.1:5173` and the backend API on `127.0.0.1:5174`. B
 
 ## Features
 
-### Today (v0.1)
+### Today (v0.2)
 - **Projects sidebar** — every project with a Claude Code session, sorted by recent activity
-- **Sessions table** — per-project browser with titles (pulled from your first message), message counts, token usage, and last-activity timestamps
+- **Sessions table** — per-project browser with titles (pulled from your first message), live/idle badge, message counts, token usage, and last-activity timestamps
+- **Active-only filter** — one click to hide stale sessions and see only what Claude Code is actively writing to (based on JSONL mtime in the last 60s)
 - **Transcript viewer** — full rendered conversation with user/assistant messages, tool calls collapsed, markdown + code blocks
+- **Embedded terminal** — `xterm.js` wired to a real PTY via `node-pty` + WebSockets. Spawn new shells or click "open in terminal" on any session to attach with `claude --resume <uuid>` already running in the right cwd
 - **Accurate path decoding** — reads the authoritative `cwd` from each session's JSONL instead of naively splitting the slug (so `yash-desai` doesn't become `yash/desai`)
 - **Token accounting** — input, output, cache-create, and cache-read tokens summed per session
 
 ### Roadmap
-- [ ] Live tailing of sessions via SSE + chokidar file watch
-- [ ] Running-process panel (via `ps` + `lsof` cwd detection) with kill buttons
-- [ ] Resume-in-terminal button (spawns a new Terminal/iTerm window running `claude --resume <uuid>` in the project cwd)
+- [ ] Live tailing of session transcripts via SSE + chokidar file watch (watch a session grow in real time)
+- [ ] Running-process panel (via `ps` + `lsof` cwd detection) mapping PIDs to sessions with kill buttons
 - [ ] Global transcript search (naive grep → SQLite FTS5)
 - [ ] Token usage dashboard with per-day / per-project charts
-- [ ] Cross-platform terminal resume (Linux, Windows)
+- [ ] Cross-platform terminal (Linux works out of the box; Windows needs testing)
 - [ ] Optional packaging as a Tauri desktop app
 
 ## Architecture
@@ -75,14 +76,22 @@ claude-station/
 | `GET` | `/api/projects` | List every project found in `~/.claude/projects/` |
 | `GET` | `/api/projects/:slug/sessions` | List sessions for a project, with titles + token totals |
 | `GET` | `/api/projects/:slug/sessions/:id` | Full parsed transcript for a session |
+| `GET` | `/api/terminals` | List active embedded PTY sessions |
+| `POST` | `/api/terminals` | Spawn a new PTY (optional `cwd`, `command`, `args`). Returns `{id, token}` — use the token to open the WebSocket |
+| `DELETE` | `/api/terminals/:id` | SIGHUP a PTY |
+| `WS` | `/ws/terminal?id=...&token=...` | Bidirectional PTY stream: `{type: 'input', data}` / `{type: 'resize', cols, rows}` client → server, `{type: 'output' \| 'scrollback' \| 'exit', ...}` server → client |
 
-The backend reads JSONL files defensively — malformed lines are skipped, unknown event types are preserved as raw. It never writes to Claude Code's data.
+The backend reads JSONL files defensively — malformed lines are skipped, unknown event types are preserved as raw. It never writes to Claude Code's data. Embedded terminals run under your user account with full shell privileges, guarded by a random per-PTY token and a WebSocket `Origin` check.
 
 ### Stack
 
-- **Frontend:** Vite + React 18 + TypeScript, Tailwind v3 + shadcn/ui, React Query, React Router, react-markdown, lucide-react
-- **Backend:** Express + TypeScript (via tsx), no DB (in-memory streaming reads)
+- **Frontend:** Vite + React 18 + TypeScript, Tailwind v3 + shadcn/ui, React Query, React Router, react-markdown, lucide-react, `@xterm/xterm` + `addon-fit` + `addon-web-links`
+- **Backend:** Express + TypeScript (via tsx), `node-pty` for PTY, `ws` for WebSocket, no DB (in-memory streaming reads)
 - **Dev runner:** `concurrently`, so `npm run dev` boots both halves
+
+### node-pty `spawn-helper` fix
+
+`node-pty`'s prebuilt `spawn-helper` binary sometimes loses its executable bit when extracted by certain npm clients, causing `posix_spawnp failed` on first spawn. A `postinstall` script (`scripts/fix-node-pty-perms.mjs`) detects this and runs `chmod +x` automatically. If you ever see that error, rerun `npm install` or `node scripts/fix-node-pty-perms.mjs`.
 
 ## Security
 

@@ -3,6 +3,7 @@ import { Sidebar } from "./components/Sidebar";
 import { ProjectView } from "./pages/ProjectView";
 import { SessionView } from "./pages/SessionView";
 import { HomeView } from "./pages/HomeView";
+import { TerminalView } from "./pages/TerminalView";
 
 export default function App() {
   return (
@@ -16,6 +17,7 @@ export default function App() {
             path="/projects/:slug/sessions/:id"
             element={<SessionView />}
           />
+          <Route path="/terminal/:id" element={<TerminalView />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </main>

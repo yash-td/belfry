@@ -20,6 +20,8 @@ export interface SessionSummary {
   firstActivity: string | null;
   lastActivity: string | null;
   sizeBytes: number;
+  /** Session's JSONL was modified within the last ~60s → claude is probably still writing. */
+  isLive: boolean;
 }
 
 export interface TokenUsage {

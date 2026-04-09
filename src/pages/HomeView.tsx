@@ -64,9 +64,7 @@ export function HomeView() {
         <header>
           <div className="flex items-center gap-3">
             <TerminalIcon className="size-8 text-primary" />
-            <h1 className="text-3xl font-bold tracking-tight">
-              Claude Station
-            </h1>
+            <h1 className="text-3xl font-bold tracking-tight">Belfry</h1>
           </div>
           <p className="text-muted-foreground mt-2">
             A local dashboard for every Claude Code session on your machine.

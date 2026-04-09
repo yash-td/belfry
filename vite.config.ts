@@ -2,7 +2,7 @@ import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import path from "node:path";
 
-// Claude Station dev server — frontend on 5173, proxies /api → backend on 5174.
+// Belfry dev server — frontend on 5173, proxies /api → backend on 5174.
 // Both bind to 127.0.0.1 only. Do NOT expose this to the network.
 export default defineConfig({
   plugins: [react()],

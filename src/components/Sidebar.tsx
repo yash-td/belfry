@@ -19,7 +19,7 @@ import { cn, formatRelativeTime } from "@/lib/utils";
 import type { ProjectSummary } from "@/types";
 
 const RECENT_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
-const OLDER_EXPANDED_KEY = "claude-station:sidebar:olderExpanded";
+const OLDER_EXPANDED_KEY = "belfry:sidebar:olderExpanded";
 
 export function Sidebar() {
   const { data: projects, isLoading, error } = useProjects();
@@ -79,7 +79,7 @@ export function Sidebar() {
       >
         <Terminal className="size-5 text-primary" />
         <div>
-          <div className="font-semibold leading-tight">Claude Station</div>
+          <div className="font-semibold leading-tight">Belfry</div>
           <div className="text-xs text-muted-foreground leading-tight">
             local session control
           </div>

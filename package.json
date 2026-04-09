@@ -1,8 +1,8 @@
 {
-  "name": "claude-station",
-  "version": "0.1.0",
+  "name": "belfry",
+  "version": "0.4.0",
   "private": false,
-  "description": "Local dashboard to manage Claude Code sessions — list, search, view live output, track token usage, and resume or kill sessions from one place.",
+  "description": "Belfry — a local dashboard for every Claude Code session on your machine. List, search, view live output, track token usage honestly, and take over runaway claude processes from one place.",
   "license": "MIT",
   "type": "module",
   "scripts": {

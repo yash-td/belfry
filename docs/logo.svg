@@ -1,5 +1,5 @@
-<svg width="256" height="256" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Claude Station">
-  <title>Claude Station logo</title>
+<svg width="256" height="256" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Belfry">
+  <title>Belfry logo</title>
   <rect width="64" height="64" rx="14" fill="#09090b"/>
   <path d="M 8 40 A 24 24 0 0 1 56 40" stroke="#4ade80" stroke-width="2.25" fill="none" stroke-linecap="round" opacity="0.4"/>
   <path d="M 15 40 A 17 17 0 0 1 49 40" stroke="#4ade80" stroke-width="2.25" fill="none" stroke-linecap="round" opacity="0.65"/>

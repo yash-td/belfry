@@ -209,7 +209,7 @@ export async function summarizeProject(
       const result = await summarizeSessionFile(full, slug, id);
       results.push(result);
     } catch (err) {
-      console.warn(`[claude-station] Failed to summarize ${full}:`, err);
+      console.warn(`[belfry] Failed to summarize ${full}:`, err);
     }
   }
 

@@ -43,12 +43,12 @@ for (const dir of platformDirs) {
       fixed++;
     }
   } catch (err) {
-    console.warn(`[claude-station] failed to chmod ${helper}:`, err);
+    console.warn(`[belfry] failed to chmod ${helper}:`, err);
   }
 }
 
 if (fixed > 0) {
   console.log(
-    `[claude-station] fixed executable bit on ${fixed} node-pty spawn-helper binar${fixed === 1 ? "y" : "ies"}`
+    `[belfry] fixed executable bit on ${fixed} node-pty spawn-helper binar${fixed === 1 ? "y" : "ies"}`
   );
 }

@@ -1,5 +1,5 @@
-// Claude Station backend — tiny Express API that exposes Claude Code's
-// on-disk session data to the local frontend and hosts embedded PTYs.
+// Belfry backend — tiny Express API that exposes Claude Code's on-disk
+// session data to the local frontend and hosts embedded PTYs.
 //
 // SECURITY: this server binds to 127.0.0.1 only. Do NOT change the host.
 // It has filesystem read access to ~/.claude, spawns shell processes via
@@ -24,7 +24,7 @@ import {
 import { aggregateUsage } from "./usage-aggregator.js";
 
 const HOST = "127.0.0.1";
-const PORT = Number(process.env.CLAUDE_STATION_PORT ?? 5174);
+const PORT = Number(process.env.BELFRY_PORT ?? 5174);
 
 const app = express();
 app.use(
@@ -44,7 +44,7 @@ const asyncHandler =
 app.get(
   "/api/health",
   asyncHandler(async (_req, res) => {
-    res.json({ ok: true, service: "claude-station", version: "0.4.0" });
+    res.json({ ok: true, service: "belfry", version: "0.4.0" });
   })
 );
 
@@ -181,7 +181,7 @@ app.use("/api", (_req, res) => {
 // Error handler — logs full detail on the server but returns a generic
 // message to the client so we don't leak paths.
 app.use((err: unknown, _req: Request, res: Response, _next: NextFunction) => {
-  console.error("[claude-station] API error:", err);
+  console.error("[belfry] API error:", err);
   const message =
     err instanceof Error ? err.message : "Internal server error";
   res.status(500).json({ error: message });
@@ -192,7 +192,7 @@ attachWebSocketServer(httpServer);
 
 httpServer.listen(PORT, HOST, () => {
   console.log(
-    `[claude-station] API + WS listening on http://${HOST}:${PORT} (localhost only)`
+    `[belfry] API + WS listening on http://${HOST}:${PORT} (localhost only)`
   );
 });
 

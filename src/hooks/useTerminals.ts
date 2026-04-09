@@ -69,7 +69,7 @@ export function useCreateTerminal() {
       // Stash the token under sessionStorage keyed by id so the TerminalView
       // can pick it up when it mounts. Tokens are localhost-scoped and
       // disappear on tab close.
-      sessionStorage.setItem(`claude-station:token:${created.id}`, created.token);
+      sessionStorage.setItem(`belfry:token:${created.id}`, created.token);
       return created.id;
     },
     onSuccess: () => {
@@ -93,5 +93,5 @@ export function useKillTerminal() {
 }
 
 export function getTerminalToken(id: string): string | null {
-  return sessionStorage.getItem(`claude-station:token:${id}`);
+  return sessionStorage.getItem(`belfry:token:${id}`);
 }

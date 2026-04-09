@@ -1,20 +1,21 @@
 <!--
-README for Claude Station.
+README for Belfry.
 Remember to replace `yashdesai` with your actual GitHub handle if it is different before publishing.
+Logo files live in docs/ (logo.svg, logo-mono.svg, wordmark.svg). Favicon is in public/.
 -->
 
 <p align="center">
-  <img src="docs/logo.svg" alt="Claude Station" width="120" height="120"/>
+  <img src="docs/logo.svg" alt="Belfry" width="120" height="120"/>
 </p>
 
-<h1 align="center">Claude Station</h1>
+<h1 align="center">Belfry</h1>
 
 <p align="center">
   <strong>A local dashboard for every Claude Code session on your machine.</strong><br/>
   Browse projects, search transcripts, see token usage broken down honestly, spawn and control terminals from the browser, and take over runaway <code>claude</code> processes you started in other windows — all from one localhost React app.
 </p>
 
-<p align="center"><em>Not affiliated with or endorsed by Anthropic. "Claude" is a trademark of Anthropic PBC.</em></p>
+<p align="center"><em>Belfry is an independent open source project. It reads Claude Code's local session files and is not affiliated with or endorsed by Anthropic. Claude and Claude Code are trademarks of Anthropic PBC.</em></p>
 
 [![license: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](./LICENSE)
 [![node: 20+](https://img.shields.io/badge/node-20%2B-brightgreen.svg)](https://nodejs.org)
@@ -26,9 +27,9 @@ Remember to replace `yashdesai` with your actual GitHub handle if it is differen
 
 > ## Looking for collaborators
 >
-> Claude Station is an early-stage open source project and I am actively looking for co-maintainers and contributors to take it further. If you use Claude Code heavily, if you like building developer tools, or if you want a real project to cut your teeth on local-first full-stack TypeScript, this is for you.
+> Belfry is an early-stage open source project and I am actively looking for co-maintainers and contributors to take it further. If you use Claude Code heavily, if you like building developer tools, or if you want a real project to cut your teeth on local-first full-stack TypeScript, this is for you.
 >
-> Good first places to jump in are listed in the [Contributing](#contributing) section and in the [GitHub issues](https://github.com/yashdesai/claude-station/issues) once the repo is live. Open a PR, open an issue, or just reach out — I would rather this become a community project than a one-person repo, and I am happy to hand out commit rights to anyone who lands two or three solid PRs.
+> Good first places to jump in are listed in the [Contributing](#contributing) section and in the [GitHub issues](https://github.com/yashdesai/belfry/issues) once the repo is live. Open a PR, open an issue, or just reach out — I would rather this become a community project than a one-person repo, and I am happy to hand out commit rights to anyone who lands two or three solid PRs.
 
 ---
 
@@ -42,14 +43,14 @@ If you use Claude Code as heavily as I do, you end up with this:
 - One of them is stuck waiting on a tool call that never resolved, but you cannot remember which.
 - You want to close your laptop and forget about it, except there is almost certainly a `claude --resume` session you should be continuing.
 
-Claude Code already stores everything you need to answer those questions on disk, in `~/.claude/projects/<slug>/<uuid>.jsonl`. It just does not give you a UI over that data. Claude Station is that UI.
+Claude Code already stores everything you need to answer those questions on disk, in `~/.claude/projects/<slug>/<uuid>.jsonl`. It just does not give you a UI over that data. Belfry is that UI.
 
 ## What it does
 
 - **Lists every project and session on your machine.** Reads the JSONL transcripts Claude Code writes locally. No API key, no network calls, no telemetry.
 - **Live session filter.** A one-click toggle to show only sessions whose JSONL has been written to in the last 60 seconds. Instantly see what is actually active versus stale history.
 - **Running-process scanner.** Scans `ps` and `lsof` every few seconds to find every external `claude` process you have running, resolves each PID to its project and current session, and displays them in a dashboard panel with start times and live indicators.
-- **Take over external sessions.** Pick a `claude` running in a terminal window you opened hours ago, click Take over, and Claude Station will SIGTERM the external process, spawn an embedded PTY in the same working directory, and run `claude --resume <session>` so you can keep the same conversation in a browser tab. Your history is preserved because it lives in the JSONL, not the process.
+- **Take over external sessions.** Pick a `claude` running in a terminal window you opened hours ago, click Take over, and Belfry will SIGTERM the external process, spawn an embedded PTY in the same working directory, and run `claude --resume <session>` so you can keep the same conversation in a browser tab. Your history is preserved because it lives in the JSONL, not the process.
 - **Embedded terminal.** Real PTYs via `node-pty` streamed over WebSockets to an `xterm.js` frontend. Spawn new shells, resume sessions, kill them — same as a native terminal, but attached to the same UI that shows your other data.
 - **Honest token accounting.** The dashboard breaks token usage into input, output, cache-create, and cache-read with explanations of what each one actually costs. Most tools show a single fat number that makes you think you burned tens of millions of tokens when 90 percent of it is Anthropic's prompt-cache replay, billed at around 10 percent of fresh input. This tool tells you the truth.
 - **Per-day trend chart.** Exact per-event bucketing, not session-level approximation. Bars are stacked by token type so you can see at a glance that the green sliver on top (output) is the real work, and the grey bottom (cache read) is the cheap context replay.
@@ -75,8 +76,8 @@ docs/
 Requires Node 20 or later. Runs on macOS and Linux today (Windows support is PR-welcome).
 
 ```bash
-git clone https://github.com/yashdesai/claude-station.git
-cd claude-station
+git clone https://github.com/yashdesai/belfry.git
+cd belfry
 npm install
 npm run dev
 ```
@@ -118,12 +119,12 @@ When you naively sum those four numbers, you get a big scary total. On my machin
 
 The cache read number is huge because every time Claude responds in a 50-turn conversation with a 100k-token context, Anthropic reports "I replayed the 100k cached tokens again" as 100k additional "tokens used." Over 50 turns you accumulate 5 million cache reads for a single conversation. Billed against cache-read pricing, this is cheap. Displayed as a single total, it is misleading.
 
-Claude Station's dashboard defaults to showing output tokens as the headline metric, stacks the daily chart by type so cache reads are visually de-emphasized, and includes a "token breakdown" card that explains each counter in plain English. I have not seen another tool do this, and it is the single most useful thing the app has taught me about how I actually use Claude.
+Belfry's dashboard defaults to showing output tokens as the headline metric, stacks the daily chart by type so cache reads are visually de-emphasized, and includes a "token breakdown" card that explains each counter in plain English. I have not seen another tool do this, and it is the single most useful thing the app has taught me about how I actually use Claude.
 
 ## Architecture
 
 ```
-claude-station/
+belfry/
   server/               Express + tsx backend. 127.0.0.1:5174 only.
     src/
       index.ts           API routes + WebSocket upgrade
@@ -145,7 +146,7 @@ claude-station/
 ### Design decisions worth mentioning
 
 - **No database.** Everything is streamed from the JSONL files on demand with an mtime-keyed in-memory cache. First call parses ~20MB across 50-ish sessions in around 400ms. Subsequent calls are ~15ms because unchanged files are not re-read. When the session count outgrows this, SQLite + FTS5 is the planned upgrade path, but so far it has not been necessary.
-- **PID to session mapping is a heuristic.** Claude Code does not expose a reverse mapping from process to JSONL. Claude Station uses `ps -o etime=` to get each process's start time and `stat` to get each JSONL's birth time, then pairs them greedily (newest PID first) by picking the session whose birth is closest to the PID's start, filtered to sessions modified during the PID's lifetime. This correctly disambiguates multiple `claude` processes sharing a working directory most of the time.
+- **PID to session mapping is a heuristic.** Claude Code does not expose a reverse mapping from process to JSONL. Belfry uses `ps -o etime=` to get each process's start time and `stat` to get each JSONL's birth time, then pairs them greedily (newest PID first) by picking the session whose birth is closest to the PID's start, filtered to sessions modified during the PID's lifetime. This correctly disambiguates multiple `claude` processes sharing a working directory most of the time.
 - **"Take over" is three steps, not an attach.** You cannot attach to another terminal's TTY. What you can do is kill the external process, wait for file locks to release, and spawn a new `claude --resume` in an embedded PTY. Same conversation state, new process, now controllable from the UI.
 - **Tokens are authoritative, billing is an estimate.** The token counts come straight from Anthropic's `usage` blocks in the JSONL, so they are exactly what would be billed. A dollar-denominated estimate is on the roadmap but requires model-aware pricing since Opus, Sonnet, and Haiku have different rates.
 
@@ -189,7 +190,7 @@ This is a local tool. Do not expose it to the network.
 ## Comparisons
 
 **Why not tmux, Warp, or a regular terminal multiplexer?**
-Those solve "I want many terminals in one window." Claude Station solves "I want to see every Claude Code session across every project, including ones running outside this tool, with metadata about what they are doing and what they have cost me." It complements your normal terminal setup. You will still use tmux or Warp for day-to-day shell work.
+Those solve "I want many terminals in one window." Belfry solves "I want to see every Claude Code session across every project, including ones running outside this tool, with metadata about what they are doing and what they have cost me." It complements your normal terminal setup. You will still use tmux or Warp for day-to-day shell work.
 
 **Why not just read the JSONL files yourself?**
 You can. I did. After about a week I realized I was building the same ad-hoc scripts every couple of days and decided to formalize them.
@@ -232,7 +233,7 @@ The Claude Code JSONL format contains everything the API would give you plus the
 ## Troubleshooting
 
 **`posix_spawnp failed` the first time you try to spawn a terminal.**
-This is a known `node-pty` tarball issue: the prebuilt `spawn-helper` binary sometimes loses its executable bit. Claude Station runs `scripts/fix-node-pty-perms.mjs` as a postinstall to `chmod +x` it automatically. If you skipped postinstall, run it manually: `node scripts/fix-node-pty-perms.mjs`.
+This is a known `node-pty` tarball issue: the prebuilt `spawn-helper` binary sometimes loses its executable bit. Belfry runs `scripts/fix-node-pty-perms.mjs` as a postinstall to `chmod +x` it automatically. If you skipped postinstall, run it manually: `node scripts/fix-node-pty-perms.mjs`.
 
 **The daily token chart shows everything on one day.**
 You are probably on an older build. Upgrade to v0.4 or later, which uses per-event timestamps for exact daily bucketing.

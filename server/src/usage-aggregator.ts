@@ -9,18 +9,20 @@
 import fs from "node:fs";
 import path from "node:path";
 import os from "node:os";
-import { listSessions } from "./claude-data.js";
+import { summarizeProject } from "./claude-data.js";
 import type { SessionSummary, TokenUsage } from "./types.js";
 import { EMPTY_USAGE } from "./types.js";
 
 const PROJECTS_ROOT = path.join(os.homedir(), ".claude", "projects");
 
-interface CachedSummary {
+interface CachedSessionData {
   mtimeMs: number;
   summary: SessionSummary;
+  dailyTokens: Map<string, TokenUsage>;
 }
 
-const summaryCache = new Map<string, CachedSummary>();
+/** Per-JSONL-file cache keyed by absolute path. Invalidated when mtime changes. */
+const summaryCache = new Map<string, CachedSessionData>();
 
 export interface ProjectTokenTotals {
   slug: string;
@@ -45,11 +47,10 @@ export interface UsageSummary {
 }
 
 /**
- * Aggregate usage across every project. Sessions are attributed to their
- * `lastActivity` date for the daily breakdown — this is an approximation
- * (multi-day sessions get assigned to their final day) but is free since
- * we already have the totals per session, and it's good enough for a
- * "tokens per day" trend view.
+ * Aggregate usage across every project. The daily breakdown is EXACT —
+ * every assistant message's usage block is bucketed by its own event
+ * timestamp, not by the session's last-activity day. We cache per-file
+ * results by mtime so repeat calls only re-parse files that have changed.
  */
 export async function aggregateUsage(days: number = 14): Promise<UsageSummary> {
   const projectEntries = await fs.promises
@@ -81,38 +82,36 @@ export async function aggregateUsage(days: number = 14): Promise<UsageSummary> {
     if (!entry.isDirectory()) continue;
     const slug = entry.name;
 
-    let summaries: SessionSummary[];
+    let sessions: CachedSessionData[];
     try {
-      summaries = await listSessionsCached(slug);
+      sessions = await loadProjectCached(slug);
     } catch {
       continue;
     }
 
     const projectTotal: TokenUsage = { ...EMPTY_USAGE };
-    for (const s of summaries) {
-      addUsage(total, s.tokens);
-      addUsage(projectTotal, s.tokens);
+    for (const s of sessions) {
+      addUsage(total, s.summary.tokens);
+      addUsage(projectTotal, s.summary.tokens);
       totalSessions++;
-      totalMessages += s.messageCount;
-      if (s.isLive) liveSessions++;
+      totalMessages += s.summary.messageCount;
+      if (s.summary.isLive) liveSessions++;
 
-      // Daily bucket from lastActivity timestamp.
-      if (s.lastActivity) {
-        const key = formatDate(startOfDay(new Date(s.lastActivity)));
-        const bucket = byDayMap.get(key);
-        if (bucket) {
-          addUsage(bucket.tokens, s.tokens);
-          bucket.sessionCount++;
-        }
+      // Exact per-event daily bucketing.
+      for (const [day, dayTokens] of s.dailyTokens) {
+        const bucket = byDayMap.get(day);
+        if (!bucket) continue; // outside the requested window
+        addUsage(bucket.tokens, dayTokens);
+        bucket.sessionCount++;
       }
     }
 
-    if (summaries.length > 0) {
+    if (sessions.length > 0) {
       byProject.push({
         slug,
-        name: deriveProjectName(slug, summaries[0]?.id),
+        name: deriveProjectName(slug),
         tokens: projectTotal,
-        sessionCount: summaries.length,
+        sessionCount: sessions.length,
       });
     }
   }
@@ -132,16 +131,11 @@ export async function aggregateUsage(days: number = 14): Promise<UsageSummary> {
 }
 
 /**
- * A cached-by-mtime wrapper around listSessions(slug). The underlying
- * listSessions still walks the directory, but we short-circuit the
- * per-file JSONL parse when a file hasn't changed since we last saw it.
- *
- * NOTE: listSessions in claude-data.ts already streams files efficiently.
- * We wrap it here because aggregateUsage runs across ALL projects — on a
- * repeat call, the vast majority of files are unchanged, and skipping
- * re-parses is the whole point of this cache.
+ * Cache-by-mtime wrapper around summarizeProject(slug). Returns full
+ * { summary, dailyTokens } per session. Files whose mtime matches the
+ * cache entry are not re-parsed.
  */
-async function listSessionsCached(slug: string): Promise<SessionSummary[]> {
+async function loadProjectCached(slug: string): Promise<CachedSessionData[]> {
   const projectDir = path.join(PROJECTS_ROOT, slug);
   let entries: fs.Dirent[] = [];
   try {
@@ -155,8 +149,7 @@ async function listSessionsCached(slug: string): Promise<SessionSummary[]> {
   );
   if (jsonlFiles.length === 0) return [];
 
-  const unchangedIds = new Set<string>();
-  const cachedSummaries: SessionSummary[] = [];
+  const cachedHits: CachedSessionData[] = [];
   let anyChanged = false;
 
   for (const entry of jsonlFiles) {
@@ -169,36 +162,43 @@ async function listSessionsCached(slug: string): Promise<SessionSummary[]> {
     }
     const cached = summaryCache.get(full);
     if (cached && cached.mtimeMs === mtimeMs) {
-      // The file hasn't changed, but `isLive` is time-sensitive — recompute
-      // it from the same mtime we already have.
-      const refreshed: SessionSummary = {
-        ...cached.summary,
-        isLive: Date.now() - mtimeMs < 60_000,
-      };
-      cachedSummaries.push(refreshed);
-      unchangedIds.add(entry.name);
+      // Refresh the time-sensitive isLive flag without re-parsing.
+      cachedHits.push({
+        mtimeMs,
+        summary: {
+          ...cached.summary,
+          isLive: Date.now() - mtimeMs < 60_000,
+        },
+        dailyTokens: cached.dailyTokens,
+      });
     } else {
       anyChanged = true;
     }
   }
 
-  if (!anyChanged && cachedSummaries.length === jsonlFiles.length) {
-    return cachedSummaries;
+  if (!anyChanged && cachedHits.length === jsonlFiles.length) {
+    return cachedHits;
   }
 
-  // Something changed (or is new). Rerun the full listSessions for this
-  // project, then update the cache.
-  const fresh = await listSessions(slug);
-  for (const s of fresh) {
-    const full = path.join(projectDir, `${s.id}.jsonl`);
+  // At least one file changed — re-summarize the whole project.
+  const fresh = await summarizeProject(slug);
+  const results: CachedSessionData[] = [];
+  for (const r of fresh) {
+    const full = path.join(projectDir, `${r.summary.id}.jsonl`);
     try {
       const mtimeMs = (await fs.promises.stat(full)).mtimeMs;
-      summaryCache.set(full, { mtimeMs, summary: s });
+      const entry: CachedSessionData = {
+        mtimeMs,
+        summary: r.summary,
+        dailyTokens: r.dailyTokens,
+      };
+      summaryCache.set(full, entry);
+      results.push(entry);
     } catch {
       // ignore
     }
   }
-  return fresh;
+  return results;
 }
 
 function addUsage(into: TokenUsage, add: TokenUsage): void {

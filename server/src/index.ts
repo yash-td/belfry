@@ -44,7 +44,7 @@ const asyncHandler =
 app.get(
   "/api/health",
   asyncHandler(async (_req, res) => {
-    res.json({ ok: true, service: "claude-station", version: "0.2.0" });
+    res.json({ ok: true, service: "claude-station", version: "0.4.0" });
   })
 );
 

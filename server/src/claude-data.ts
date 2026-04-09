@@ -167,8 +167,26 @@ async function summarizeProjectDir(
   };
 }
 
+/**
+ * Full per-file summarization result. The aggregator uses both fields;
+ * the public `listSessions` endpoint only returns the summary.
+ */
+export interface SessionSummarizeResult {
+  summary: SessionSummary;
+  /** Per-day token usage keyed by YYYY-MM-DD (local timezone). */
+  dailyTokens: Map<string, TokenUsage>;
+}
+
 /** List all sessions for a given project slug with full per-session metadata. */
 export async function listSessions(slug: string): Promise<SessionSummary[]> {
+  const results = await summarizeProject(slug);
+  return results.map((r) => r.summary);
+}
+
+/** Internal: full summarize (with daily buckets) for every session in a project. */
+export async function summarizeProject(
+  slug: string
+): Promise<SessionSummarizeResult[]> {
   const projectDir = path.join(PROJECTS_ROOT, slug);
   if (!isInsideProjectsRoot(projectDir)) {
     throw new Error(`Invalid project slug: ${slug}`);
@@ -182,25 +200,25 @@ export async function listSessions(slug: string): Promise<SessionSummary[]> {
     throw err;
   }
 
-  const sessions: SessionSummary[] = [];
+  const results: SessionSummarizeResult[] = [];
   for (const entry of entries) {
     if (!entry.isFile() || !entry.name.endsWith(".jsonl")) continue;
     const id = entry.name.slice(0, -".jsonl".length);
     const full = path.join(projectDir, entry.name);
     try {
-      const summary = await summarizeSessionFile(full, slug, id);
-      sessions.push(summary);
+      const result = await summarizeSessionFile(full, slug, id);
+      results.push(result);
     } catch (err) {
       console.warn(`[claude-station] Failed to summarize ${full}:`, err);
     }
   }
 
-  sessions.sort((a, b) => {
-    const at = a.lastActivity ? Date.parse(a.lastActivity) : 0;
-    const bt = b.lastActivity ? Date.parse(b.lastActivity) : 0;
+  results.sort((a, b) => {
+    const at = a.summary.lastActivity ? Date.parse(a.summary.lastActivity) : 0;
+    const bt = b.summary.lastActivity ? Date.parse(b.summary.lastActivity) : 0;
     return bt - at;
   });
-  return sessions;
+  return results;
 }
 
 /**
@@ -208,6 +226,7 @@ export async function listSessions(slug: string): Promise<SessionSummary[]> {
  *   - first user text (becomes the session "title")
  *   - total message count
  *   - cumulative token usage across all assistant messages
+ *   - per-day token buckets (by event timestamp)
  *   - first/last event timestamps
  *
  * We intentionally do NOT load the entire file into memory — some sessions
@@ -217,7 +236,7 @@ async function summarizeSessionFile(
   filePath: string,
   slug: string,
   id: string
-): Promise<SessionSummary> {
+): Promise<SessionSummarizeResult> {
   const stat = await fs.promises.stat(filePath);
 
   let title = "";
@@ -225,6 +244,7 @@ async function summarizeSessionFile(
   let firstTs: string | null = null;
   let lastTs: string | null = null;
   const tokens: TokenUsage = { ...EMPTY_USAGE };
+  const dailyTokens = new Map<string, TokenUsage>();
 
   const stream = fs.createReadStream(filePath, { encoding: "utf8" });
   const rl = readline.createInterface({ input: stream, crlfDelay: Infinity });
@@ -260,10 +280,29 @@ async function summarizeSessionFile(
     const message = obj.message as Record<string, unknown> | undefined;
     const usage = message?.usage as Record<string, unknown> | undefined;
     if (usage) {
-      tokens.input += toInt(usage.input_tokens);
-      tokens.output += toInt(usage.output_tokens);
-      tokens.cacheCreate += toInt(usage.cache_creation_input_tokens);
-      tokens.cacheRead += toInt(usage.cache_read_input_tokens);
+      const input = toInt(usage.input_tokens);
+      const output = toInt(usage.output_tokens);
+      const cacheCreate = toInt(usage.cache_creation_input_tokens);
+      const cacheRead = toInt(usage.cache_read_input_tokens);
+      tokens.input += input;
+      tokens.output += output;
+      tokens.cacheCreate += cacheCreate;
+      tokens.cacheRead += cacheRead;
+
+      // Bucket into the local-timezone day of this specific event. If the
+      // event has no timestamp (rare — only affects ancient schemas), fall
+      // back to the file's mtime.
+      const eventDay = isoToLocalDate(ts) ?? mtimeToLocalDate(stat.mtimeMs);
+      let bucket = dailyTokens.get(eventDay);
+      if (!bucket) {
+        bucket = { ...EMPTY_USAGE };
+        dailyTokens.set(eventDay, bucket);
+      }
+      bucket.input += input;
+      bucket.output += output;
+      bucket.cacheCreate += cacheCreate;
+      bucket.cacheRead += cacheRead;
+      bucket.total += input + output + cacheCreate + cacheRead;
     }
   }
 
@@ -272,7 +311,7 @@ async function summarizeSessionFile(
 
   const isLive = Date.now() - stat.mtimeMs < LIVE_THRESHOLD_MS;
 
-  return {
+  const summary: SessionSummary = {
     id,
     projectSlug: slug,
     title: title.trim() || "(untitled session)",
@@ -283,6 +322,26 @@ async function summarizeSessionFile(
     sizeBytes: stat.size,
     isLive,
   };
+
+  return { summary, dailyTokens };
+}
+
+function isoToLocalDate(iso: string | undefined): string | null {
+  if (!iso) return null;
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return null;
+  return toLocalDateString(d);
+}
+
+function mtimeToLocalDate(mtimeMs: number): string {
+  return toLocalDateString(new Date(mtimeMs));
+}
+
+function toLocalDateString(d: Date): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
 }
 
 /**

@@ -2,7 +2,6 @@ import { useState, useEffect, useMemo } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
 import {
   Folder,
-  Terminal,
   Loader2,
   TerminalSquare,
   Plus,
@@ -10,6 +9,7 @@ import {
   Cpu,
   ChevronRight,
 } from "lucide-react";
+import { Logo } from "@/components/Logo";
 import { useProjects } from "@/hooks/useApi";
 import { useTerminals, useCreateTerminal } from "@/hooks/useTerminals";
 import { useProcesses } from "@/hooks/useProcesses";
@@ -75,9 +75,9 @@ export function Sidebar() {
     <aside className="w-72 shrink-0 border-r border-border bg-card/40 flex flex-col">
       <NavLink
         to="/"
-        className="flex items-center gap-2 px-4 h-14 border-b border-border hover:bg-accent/30 transition-colors"
+        className="flex items-center gap-2.5 px-4 h-14 border-b border-border hover:bg-accent/30 transition-colors"
       >
-        <Terminal className="size-5 text-primary" />
+        <Logo className="size-8" />
         <div>
           <div className="font-semibold leading-tight">Belfry</div>
           <div className="text-xs text-muted-foreground leading-tight">

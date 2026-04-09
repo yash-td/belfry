@@ -8,11 +8,11 @@ import {
   Info,
   Skull,
   TerminalSquare,
-  Terminal as TerminalIcon,
   Circle,
   ArrowRight,
   Loader2,
 } from "lucide-react";
+import { Logo } from "@/components/Logo";
 import {
   Bar,
   BarChart,
@@ -63,7 +63,7 @@ export function HomeView() {
       <div className="max-w-6xl mx-auto p-8 space-y-8">
         <header>
           <div className="flex items-center gap-3">
-            <TerminalIcon className="size-8 text-primary" />
+            <Logo className="size-12" />
             <h1 className="text-3xl font-bold tracking-tight">Belfry</h1>
           </div>
           <p className="text-muted-foreground mt-2">

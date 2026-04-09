@@ -1,6 +1,5 @@
 <!--
 README for Belfry.
-Remember to replace `yashdesai` with your actual GitHub handle if it is different before publishing.
 Logo files live in docs/ (logo.svg, logo-mono.svg, wordmark.svg). Favicon is in public/.
 -->
 
@@ -29,7 +28,7 @@ Logo files live in docs/ (logo.svg, logo-mono.svg, wordmark.svg). Favicon is in 
 >
 > Belfry is an early-stage open source project and I am actively looking for co-maintainers and contributors to take it further. If you use Claude Code heavily, if you like building developer tools, or if you want a real project to cut your teeth on local-first full-stack TypeScript, this is for you.
 >
-> Good first places to jump in are listed in the [Contributing](#contributing) section and in the [GitHub issues](https://github.com/yashdesai/belfry/issues) once the repo is live. Open a PR, open an issue, or just reach out — I would rather this become a community project than a one-person repo, and I am happy to hand out commit rights to anyone who lands two or three solid PRs.
+> Good first places to jump in are listed in the [Contributing](#contributing) section and in the [GitHub issues](https://github.com/yash-td/belfry/issues) once the repo is live. Open a PR, open an issue, or just reach out — I would rather this become a community project than a one-person repo, and I am happy to hand out commit rights to anyone who lands two or three solid PRs.
 
 ---
 
@@ -76,7 +75,7 @@ docs/
 Requires Node 20 or later. Runs on macOS and Linux today (Windows support is PR-welcome).
 
 ```bash
-git clone https://github.com/yashdesai/belfry.git
+git clone https://github.com/yash-td/belfry.git
 cd belfry
 npm install
 npm run dev

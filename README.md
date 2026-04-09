@@ -2,7 +2,7 @@
 
 A local dashboard for managing every [Claude Code](https://docs.anthropic.com/en/docs/claude-code) session on your machine. Browse projects, search transcripts, see token usage, and (coming soon) view live output, kill stuck sessions, and resume them from one place.
 
-> **v0.2 status:** projects sidebar, sessions browser, transcript viewer, live session filter, and an embedded `xterm.js` terminal with "resume in terminal" are live. Live tailing, process management, and global search are on the roadmap below.
+> **v0.3 status:** projects sidebar, sessions browser, transcript viewer, live session filter, embedded `xterm.js` terminal, external process detection + kill, and a token usage dashboard with charts are all live. Live transcript tailing and global search are on the roadmap below.
 
 ## Why
 
@@ -32,21 +32,22 @@ The frontend runs on `127.0.0.1:5173` and the backend API on `127.0.0.1:5174`. B
 
 ## Features
 
-### Today (v0.2)
+### Today (v0.3)
 - **Projects sidebar** — every project with a Claude Code session, sorted by recent activity
-- **Sessions table** — per-project browser with titles (pulled from your first message), live/idle badge, message counts, token usage, and last-activity timestamps
+- **Sessions table** — per-project browser with titles, live/idle badge, message counts, token usage, last-activity timestamps
 - **Active-only filter** — one click to hide stale sessions and see only what Claude Code is actively writing to (based on JSONL mtime in the last 60s)
 - **Transcript viewer** — full rendered conversation with user/assistant messages, tool calls collapsed, markdown + code blocks
 - **Embedded terminal** — `xterm.js` wired to a real PTY via `node-pty` + WebSockets. Spawn new shells or click "open in terminal" on any session to attach with `claude --resume <uuid>` already running in the right cwd
+- **External process detection** — scans `ps` + `lsof` every 4s to find every running `claude` process owned by you, maps each to its project + best-guess current session, and lets you SIGTERM stuck ones from the UI
+- **Token usage dashboard** — total tokens, tokens per day (14-day trend bar chart), top projects by tokens (horizontal bar chart), live session count, running-process count, embedded-terminal count, session and message totals
 - **Accurate path decoding** — reads the authoritative `cwd` from each session's JSONL instead of naively splitting the slug (so `yash-desai` doesn't become `yash/desai`)
-- **Token accounting** — input, output, cache-create, and cache-read tokens summed per session
+- **Token accounting** — input, output, cache-create, and cache-read tokens summed per session with an mtime-keyed cache so repeat polls are ~15ms
 
 ### Roadmap
 - [ ] Live tailing of session transcripts via SSE + chokidar file watch (watch a session grow in real time)
-- [ ] Running-process panel (via `ps` + `lsof` cwd detection) mapping PIDs to sessions with kill buttons
 - [ ] Global transcript search (naive grep → SQLite FTS5)
-- [ ] Token usage dashboard with per-day / per-project charts
-- [ ] Cross-platform terminal (Linux works out of the box; Windows needs testing)
+- [ ] Exact per-event daily bucketing for the usage chart (currently attributes each session's total to its last-activity day)
+- [ ] Cross-platform terminal + process detection (Linux works for PTY, Windows needs testing; process scan currently returns empty on Windows)
 - [ ] Optional packaging as a Tauri desktop app
 
 ## Architecture
@@ -80,6 +81,9 @@ claude-station/
 | `POST` | `/api/terminals` | Spawn a new PTY (optional `cwd`, `command`, `args`). Returns `{id, token}` — use the token to open the WebSocket |
 | `DELETE` | `/api/terminals/:id` | SIGHUP a PTY |
 | `WS` | `/ws/terminal?id=...&token=...` | Bidirectional PTY stream: `{type: 'input', data}` / `{type: 'resize', cols, rows}` client → server, `{type: 'output' \| 'scrollback' \| 'exit', ...}` server → client |
+| `GET` | `/api/processes` | List every external `claude` process owned by the current user, with cwd + mapped project + best-guess current session |
+| `POST` | `/api/processes/:pid/kill` | SIGTERM an external claude process. Only PIDs the scanner has already flagged as claude are accepted — the endpoint can't be used as a general-purpose kill. |
+| `GET` | `/api/usage?days=14` | Aggregated token usage across every project: totals, per-project breakdown, per-day trend. Cached per-file by mtime. |
 
 The backend reads JSONL files defensively — malformed lines are skipped, unknown event types are preserved as raw. It never writes to Claude Code's data. Embedded terminals run under your user account with full shell privileges, guarded by a random per-PTY token and a WebSocket `Origin` check.
 

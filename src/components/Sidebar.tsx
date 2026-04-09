@@ -6,9 +6,11 @@ import {
   TerminalSquare,
   Plus,
   Circle,
+  Cpu,
 } from "lucide-react";
 import { useProjects } from "@/hooks/useApi";
 import { useTerminals, useCreateTerminal } from "@/hooks/useTerminals";
+import { useProcesses } from "@/hooks/useProcesses";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import { cn, formatRelativeTime } from "@/lib/utils";
@@ -16,10 +18,12 @@ import { cn, formatRelativeTime } from "@/lib/utils";
 export function Sidebar() {
   const { data: projects, isLoading, error } = useProjects();
   const { data: terminals } = useTerminals();
+  const { data: processes } = useProcesses();
   const createTerminal = useCreateTerminal();
   const navigate = useNavigate();
 
   const activeTerminals = terminals?.filter((t) => !t.exited) ?? [];
+  const externalProcesses = processes ?? [];
 
   async function handleNewTerminal(): Promise<void> {
     const id = await createTerminal.mutateAsync({});
@@ -86,6 +90,62 @@ export function Sidebar() {
               <TerminalSquare className="size-3 shrink-0 text-muted-foreground" />
               <div className="min-w-0 flex-1 truncate font-mono text-xs">
                 {label}
+              </div>
+            </NavLink>
+          );
+        })}
+      </nav>
+
+      <div className="flex items-center justify-between px-4 pt-2 pb-1 border-t border-border">
+        <div className="text-xs uppercase tracking-wider text-muted-foreground">
+          Running claude
+        </div>
+        {externalProcesses.length > 0 && (
+          <span className="text-[10px] text-muted-foreground">
+            {externalProcesses.length}
+          </span>
+        )}
+      </div>
+
+      <nav className="px-2 space-y-0.5 pb-2 max-h-48 overflow-auto">
+        {externalProcesses.length === 0 && (
+          <div className="px-3 py-1.5 text-xs text-muted-foreground">
+            No external claude processes.
+          </div>
+        )}
+        {externalProcesses.map((p) => {
+          const target =
+            p.projectSlug && p.sessionId
+              ? `/projects/${encodeURIComponent(p.projectSlug)}/sessions/${encodeURIComponent(p.sessionId)}`
+              : p.projectSlug
+                ? `/projects/${encodeURIComponent(p.projectSlug)}`
+                : "#";
+          return (
+            <NavLink
+              key={p.pid}
+              to={target}
+              className={({ isActive }) =>
+                cn(
+                  "group flex items-center gap-2 rounded-md px-3 py-1.5 text-sm transition-colors",
+                  isActive
+                    ? "bg-accent text-accent-foreground"
+                    : "hover:bg-accent/50 text-foreground/90"
+                )
+              }
+              title={`pid ${p.pid} — ${p.cwd ?? "unknown cwd"}`}
+            >
+              <Circle
+                className={cn(
+                  "size-2 fill-current shrink-0",
+                  p.sessionIsLive ? "text-emerald-400" : "text-amber-400"
+                )}
+              />
+              <Cpu className="size-3 shrink-0 text-muted-foreground" />
+              <div className="min-w-0 flex-1 truncate text-xs">
+                <span className="font-medium">
+                  {p.projectName ?? "(unknown)"}
+                </span>
+                <span className="text-muted-foreground"> · {p.pid}</span>
               </div>
             </NavLink>
           );

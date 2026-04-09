@@ -17,6 +17,11 @@ import {
 } from "./claude-data.js";
 import { ptyManager, type CreateTerminalOptions } from "./pty-manager.js";
 import { attachWebSocketServer } from "./ws.js";
+import {
+  scanClaudeProcesses,
+  killClaudeProcess,
+} from "./process-scan.js";
+import { aggregateUsage } from "./usage-aggregator.js";
 
 const HOST = "127.0.0.1";
 const PORT = Number(process.env.CLAUDE_STATION_PORT ?? 5174);
@@ -118,6 +123,53 @@ app.delete(
       return;
     }
     res.json({ ok: true });
+  })
+);
+
+// ------------ external claude processes ------------
+
+app.get(
+  "/api/processes",
+  asyncHandler(async (_req, res) => {
+    const processes = await scanClaudeProcesses();
+    res.json({ processes });
+  })
+);
+
+app.post(
+  "/api/processes/:pid/kill",
+  asyncHandler(async (req, res) => {
+    const pid = Number.parseInt(req.params.pid, 10);
+    if (!Number.isInteger(pid) || pid <= 1) {
+      res.status(400).json({ error: "Invalid PID" });
+      return;
+    }
+    const body = (req.body ?? {}) as Record<string, unknown>;
+    const signal =
+      typeof body.signal === "string" &&
+      /^SIG[A-Z]+$/.test(body.signal as string)
+        ? (body.signal as NodeJS.Signals)
+        : ("SIGTERM" as NodeJS.Signals);
+    const result = await killClaudeProcess(pid, signal);
+    if (!result.ok) {
+      res.status(400).json({ error: result.error ?? "Failed to kill" });
+      return;
+    }
+    res.json({ ok: true });
+  })
+);
+
+// ------------ usage aggregation ------------
+
+app.get(
+  "/api/usage",
+  asyncHandler(async (req, res) => {
+    const days = Math.max(
+      1,
+      Math.min(90, Number.parseInt(String(req.query.days ?? "14"), 10) || 14)
+    );
+    const usage = await aggregateUsage(days);
+    res.json(usage);
   })
 );
 

@@ -3,9 +3,18 @@ README for Claude Station.
 Remember to replace `yashdesai` with your actual GitHub handle if it is different before publishing.
 -->
 
-# Claude Station
+<p align="center">
+  <img src="docs/logo.svg" alt="Claude Station" width="120" height="120"/>
+</p>
 
-**A local dashboard for every Claude Code session on your machine.** Browse projects, search transcripts, see token usage broken down honestly, spawn and control terminals from the browser, and take over runaway `claude` processes you started in other windows — all from one localhost React app.
+<h1 align="center">Claude Station</h1>
+
+<p align="center">
+  <strong>A local dashboard for every Claude Code session on your machine.</strong><br/>
+  Browse projects, search transcripts, see token usage broken down honestly, spawn and control terminals from the browser, and take over runaway <code>claude</code> processes you started in other windows — all from one localhost React app.
+</p>
+
+<p align="center"><em>Not affiliated with or endorsed by Anthropic. "Claude" is a trademark of Anthropic PBC.</em></p>
 
 [![license: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](./LICENSE)
 [![node: 20+](https://img.shields.io/badge/node-20%2B-brightgreen.svg)](https://nodejs.org)

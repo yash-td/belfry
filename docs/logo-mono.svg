@@ -1,0 +1,11 @@
+<svg width="256" height="256" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Claude Station (monochrome)">
+  <title>Claude Station logo (monochrome)</title>
+  <rect width="64" height="64" rx="14" fill="none" stroke="currentColor" stroke-width="1.5"/>
+  <path d="M 8 40 A 24 24 0 0 1 56 40" stroke="currentColor" stroke-width="2.25" fill="none" stroke-linecap="round" opacity="0.4"/>
+  <path d="M 15 40 A 17 17 0 0 1 49 40" stroke="currentColor" stroke-width="2.25" fill="none" stroke-linecap="round" opacity="0.65"/>
+  <path d="M 22 40 A 10 10 0 0 1 42 40" stroke="currentColor" stroke-width="2.25" fill="none" stroke-linecap="round"/>
+  <circle cx="32" cy="40" r="3" fill="currentColor"/>
+  <line x1="32" y1="43" x2="32" y2="56" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+  <line x1="27" y1="52" x2="37" y2="52" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+  <line x1="25" y1="56" x2="39" y2="56" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+</svg>

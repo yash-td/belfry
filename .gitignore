@@ -11,3 +11,6 @@ dist-ssr
 .idea
 .vite
 coverage
+
+# TypeScript incremental build info
+*.tsbuildinfo

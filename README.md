@@ -72,7 +72,7 @@ docs/
 
 ## Quick start
 
-Requires Node 20 or later. Runs on macOS and Linux today (Windows support is PR-welcome).
+Requires Node 20 or later. Runs on macOS, Linux, and Windows (see [Platform support](#platform-support) for details).
 
 ```bash
 git clone https://github.com/yash-td/belfry.git
@@ -88,6 +88,18 @@ That is the whole install. No database, no build step before first run, no envir
 - Frontend runs on `127.0.0.1:5173` (Vite).
 - Backend runs on `127.0.0.1:5174` (Express + WebSocket).
 - Both are bound to localhost only. Do not change that.
+
+## Platform support
+
+| Feature | Mac | Linux | Windows |
+|---|---|---|---|
+| Session browsing, transcripts, token accounting, charts | Yes | Yes | Yes |
+| Embedded terminal (xterm.js + node-pty) | Yes | Yes | Yes (via ConPTY) |
+| External process detection (running claude scanner) | Yes | Yes | No |
+| "Take over" external sessions (kill + resume) | Yes | Yes | No |
+| Kill stuck claude processes from the UI | Yes | Yes | No |
+
+Belfry is fully featured on Mac and Linux. On Windows, the core experience (browsing sessions, viewing transcripts, token breakdowns, charts, embedded terminals) works out of the box. The piece that does not work yet is external process scanning, which relies on `ps` and `lsof` — Unix commands that have no direct Windows equivalent. A PowerShell-based scanner is the main open contribution opportunity. The app still boots on Windows; you just will not see the "Running claude" panel or the "Take over" buttons. Everything else is unaffected.
 
 ## Why you should try it
 
